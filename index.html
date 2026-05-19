@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JSON Table Explorer</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        header {
+            padding: 16px 20px;
+            background: #111827;
+            border-bottom: 1px solid #334155;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 22px;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 320px;
+            background: #1e293b;
+            border-right: 1px solid #334155;
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        textarea {
+            width: 100%;
+            height: 260px;
+            background: #0f172a;
+            color: white;
+            border: 1px solid #475569;
+            border-radius: 8px;
+            padding: 12px;
+            resize: vertical;
+            font-family: Consolas, monospace;
+            font-size: 13px;
+        }
+
+        button {
+            margin-top: 12px;
+            width: 100%;
+            padding: 10px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        .section-title {
+            margin-top: 24px;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #93c5fd;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .toolbar {
+            padding: 12px 16px;
+            background: #111827;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .breadcrumbs {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .crumb {
+            background: #1e40af;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .table-container {
+            overflow: auto;
+            flex: 1;
+            padding: 16px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #111827;
+        }
+
+        th {
+            background: #1e293b;
+            position: sticky;
+            top: 0;
+        }
+
+        th,
+        td {
+            border: 1px solid #334155;
+            padding: 10px;
+            text-align: left;
+            vertical-align: top;
+            font-size: 14px;
+        }
+
+        tr:nth-child(even) {
+            background: #0f172a;
+        }
+
+        .array-button {
+            background: #7c3aed;
+            border: none;
+            color: white;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .array-button:hover {
+            background: #6d28d9;
+        }
+
+        .null {
+            color: #94a3b8;
+            font-style: italic;
+        }
+
+        .error {
+            color: #f87171;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .badge {
+            background: #334155;
+            border-radius: 999px;
+            padding: 2px 8px;
+            font-size: 11px;
+            margin-left: 6px;
+        }
+
+        #context-menu {
+            user-select: none;
+            backdrop-filter: blur(8px);
+        }
+
+        #context-menu div {
+            transition: background .15s ease;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>JSON Table Explorer</h1>
+    </header>
+
+    <div class="container">
+
+        <div class="sidebar">
+
+            <div class="section-title">JSON Input</div>
+
+            <textarea id="jsonInput">
+{
+  "id": 1001,
+  "name": "Acme Corp",
+  "status": "Active",
+  "created": "2026-05-19",
+  "contacts": [
+    {
+      "firstName": "John",
+      "lastName": "Smith",
+      "email": "john@acme.com"
+    },
+    {
+      "firstName": "Sarah",
+      "lastName": "Johnson",
+      "email": "sarah@acme.com"
+    }
+  ],
+  "tickets": [
+    {
+      "ticketId": 5001,
+      "title": "VPN Access",
+      "priority": "High"
+    },
+    {
+      "ticketId": 5002,
+      "title": "Laptop Replacement",
+      "priority": "Medium"
+    }
+  ]
+}
+        </textarea>
+
+            <button id="loadBtn">Load JSON</button>
+
+            <div id="error" class="error"></div>
+
+            <div class="section-title">
+                Columns
+            </div>
+
+            <div id="columns" class="checkbox-group"></div>
+
+        </div>
+
+        <div class="main">
+
+            <div class="toolbar">
+                <div class="breadcrumbs" id="breadcrumbs"></div>
+                <div id="rowCount"></div>
+            </div>
+
+            <div class="table-container">
+                <table id="dataTable">
+                    <thead></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        let rootData = null;
+        let currentData = null;
+        let currentPath = [];
+        let selectedColumns = [];
+
+        const jsonInput = document.getElementById('jsonInput');
+        const loadBtn = document.getElementById('loadBtn');
+        const columnsContainer = document.getElementById('columns');
+        const table = document.getElementById('dataTable');
+        const thead = table.querySelector('thead');
+        const tbody = table.querySelector('tbody');
+        const breadcrumbs = document.getElementById('breadcrumbs');
+        const rowCount = document.getElementById('rowCount');
+        const errorEl = document.getElementById('error');
+
+        loadBtn.addEventListener('click', loadJson);
+
+        function loadJson() {
+            try {
+                errorEl.textContent = '';
+
+                rootData = JSON.parse(jsonInput.value);
+
+                currentPath = [];
+                currentData = rootData;
+
+                initializeColumns();
+                render();
+
+            } catch (err) {
+                errorEl.textContent = err.message;
+            }
+        }
+
+        function getRows(data) {
+            if (Array.isArray(data)) {
+                return data;
+            }
+
+            return [data];
+        }
+
+        function getAvailableColumns(rows) {
+            const cols = new Set();
+
+            rows.forEach(row => {
+                if (row && typeof row === 'object') {
+                    Object.keys(row).forEach(k => cols.add(k));
+                }
+            });
+
+            return [...cols];
+        }
+
+        function initializeColumns() {
+            const rows = getRows(currentData);
+            selectedColumns = getAvailableColumns(rows);
+            renderColumnSelectors();
+        }
+
+        function renderColumnSelectors() {
+            columnsContainer.innerHTML = '';
+
+            const rows = getRows(currentData);
+            const cols = getAvailableColumns(rows);
+
+            cols.forEach(col => {
+                const wrapper = document.createElement('label');
+                wrapper.className = 'checkbox-item';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = selectedColumns.includes(col);
+
+                checkbox.addEventListener('change', () => {
+                    if (checkbox.checked) {
+                        selectedColumns.push(col);
+                    } else {
+                        selectedColumns = selectedColumns.filter(c => c !== col);
+                    }
+
+                    renderTable();
+                });
+
+                wrapper.appendChild(checkbox);
+                wrapper.appendChild(document.createTextNode(col));
+
+                columnsContainer.appendChild(wrapper);
+            });
+        }
+
+        function render() {
+            renderBreadcrumbs();
+            renderTable();
+        }
+
+        function renderBreadcrumbs() {
+            breadcrumbs.innerHTML = '';
+
+            const root = document.createElement('div');
+            root.className = 'crumb';
+            root.textContent = 'root';
+
+            root.addEventListener('click', () => {
+                currentPath = [];
+                currentData = rootData;
+                initializeColumns();
+                render();
+            });
+
+            breadcrumbs.appendChild(root);
+
+            let tempData = rootData;
+
+            currentPath.forEach((pathPart, index) => {
+                tempData = tempData[pathPart];
+
+                const crumb = document.createElement('div');
+                crumb.className = 'crumb';
+                crumb.textContent = pathPart;
+
+                crumb.addEventListener('click', () => {
+                    currentPath = currentPath.slice(0, index + 1);
+
+                    let data = rootData;
+
+                    currentPath.forEach(p => {
+                        data = data[p];
+                    });
+
+                    currentData = data;
+
+                    initializeColumns();
+                    render();
+                });
+
+                breadcrumbs.appendChild(crumb);
+            });
+        }
+
+        function renderTable() {
+            thead.innerHTML = '';
+            tbody.innerHTML = '';
+
+            const rows = getRows(currentData);
+
+            rowCount.innerHTML = `
+        ${rows.length} rows
+    `;
+
+            if (rows.length === 0) {
+                return;
+            }
+
+            const headerRow = document.createElement('tr');
+
+            selectedColumns.forEach(col => {
+                const th = document.createElement('th');
+                th.textContent = col;
+                headerRow.appendChild(th);
+            });
+
+            thead.appendChild(headerRow);
+
+            rows.forEach((row, rowIndex) => {
+                const tr = document.createElement('tr');
+
+                selectedColumns.forEach(col => {
+                    const td = document.createElement('td');
+
+                    const value = row?.[col];
+
+                    let copyValue = '';
+
+                    if (Array.isArray(value)) {
+
+                        copyValue = JSON.stringify(value, null, 2);
+
+                        const btn = document.createElement('button');
+                        btn.className = 'array-button';
+
+                        btn.innerHTML = `
+                    Open Array
+                    <span class="badge">${value.length}</span>
+                `;
+
+                        btn.addEventListener('click', () => {
+                            currentPath.push(col);
+
+                            let data = rootData;
+
+                            currentPath.forEach(p => {
+                                data = data[p];
+                            });
+
+                            currentData = data;
+
+                            initializeColumns();
+                            render();
+                        });
+
+                        td.appendChild(btn);
+
+                    } else if (
+                        value &&
+                        typeof value === 'object'
+                    ) {
+
+                        copyValue = JSON.stringify(value, null, 2);
+
+                        td.textContent = copyValue;
+
+                    } else if (value === null || value === undefined) {
+
+                        copyValue = 'null';
+
+                        td.innerHTML = '<span class="null">null</span>';
+
+                    } else {
+
+                        copyValue = String(value);
+
+                        td.textContent = value;
+                    }
+
+                    //
+                    // CONTEXT MENU
+                    //
+                    td.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+
+                        removeContextMenu();
+
+                        const menu = document.createElement('div');
+                        menu.id = 'context-menu';
+
+                        menu.style.position = 'fixed';
+                        menu.style.top = `${e.clientY}px`;
+                        menu.style.left = `${e.clientX}px`;
+                        menu.style.background = '#1e293b';
+                        menu.style.border = '1px solid #475569';
+                        menu.style.borderRadius = '8px';
+                        menu.style.padding = '6px';
+                        menu.style.zIndex = '99999';
+                        menu.style.minWidth = '160px';
+                        menu.style.boxShadow = '0 10px 25px rgba(0,0,0,.35)';
+
+                        const copyItem = document.createElement('div');
+
+                        copyItem.textContent = 'Copy Value';
+                        copyItem.style.padding = '10px';
+                        copyItem.style.cursor = 'pointer';
+                        copyItem.style.borderRadius = '6px';
+                        copyItem.style.color = 'white';
+
+                        copyItem.addEventListener('mouseenter', () => {
+                            copyItem.style.background = '#334155';
+                        });
+
+                        copyItem.addEventListener('mouseleave', () => {
+                            copyItem.style.background = 'transparent';
+                        });
+
+                        copyItem.addEventListener('click', async () => {
+                            try {
+                                await navigator.clipboard.writeText(copyValue);
+                            } catch (err) {
+                                console.error(err);
+                            }
+
+                            removeContextMenu();
+                        });
+
+                        menu.appendChild(copyItem);
+
+                        document.body.appendChild(menu);
+                    });
+
+                    tr.appendChild(td);
+                });
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        function removeContextMenu() {
+            const existing = document.getElementById('context-menu');
+
+            if (existing) {
+                existing.remove();
+            }
+        }
+
+        document.addEventListener('click', removeContextMenu);
+        document.addEventListener('scroll', removeContextMenu);
+        window.addEventListener('resize', removeContextMenu);
+        loadJson();
+    </script>
+
+</body>
+
+</html>
