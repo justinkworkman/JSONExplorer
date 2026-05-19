@@ -265,6 +265,13 @@
             <div class="toolbar">
                 <div class="breadcrumbs" id="breadcrumbs"></div>
                 <div id="rowCount"></div>
+                <button id="exportCsvBtn" style="
+                    width:auto;
+                    margin-top:0;
+                    padding:8px 14px;
+                ">
+                    Export CSV
+                </button>
             </div>
 
             <div class="table-container">
@@ -293,8 +300,10 @@
         const breadcrumbs = document.getElementById('breadcrumbs');
         const rowCount = document.getElementById('rowCount');
         const errorEl = document.getElementById('error');
+        const exportCsvBtn = document.getElementById('exportCsvBtn');
 
         loadBtn.addEventListener('click', loadJson);
+        exportCsvBtn.addEventListener('click', exportTableToCsv);
 
         function loadJson() {
             try {
@@ -570,6 +579,83 @@
             if (existing) {
                 existing.remove();
             }
+        }
+
+        function exportTableToCsv() {
+
+            const rows = getRows(currentData);
+        
+            if (!rows.length) {
+                return;
+            }
+        
+            const csvRows = [];
+        
+            //
+            // HEADER
+            //
+            csvRows.push(
+                selectedColumns.map(escapeCsvValue).join(',')
+            );
+        
+            //
+            // DATA ROWS
+            //
+            rows.forEach(row => {
+        
+                const values = selectedColumns.map(col => {
+        
+                    const value = row?.[col];
+        
+                    if (value === null || value === undefined) {
+                        return '';
+                    }
+        
+                    if (typeof value === 'object') {
+                        return escapeCsvValue(
+                            JSON.stringify(value)
+                        );
+                    }
+        
+                    return escapeCsvValue(String(value));
+                });
+        
+                csvRows.push(values.join(','));
+            });
+        
+            const csvContent = csvRows.join('\\n');
+        
+            const blob = new Blob(
+                [csvContent],
+                { type: 'text/csv;charset=utf-8;' }
+            );
+        
+            const url = URL.createObjectURL(blob);
+        
+            const link = document.createElement('a');
+        
+            link.href = url;
+        
+            const pathName = currentPath.length
+                ? currentPath.join('_')
+                : 'root';
+        
+            link.download = `${pathName}.csv`;
+        
+            document.body.appendChild(link);
+        
+            link.click();
+        
+            document.body.removeChild(link);
+        
+            URL.revokeObjectURL(url);
+        }
+        
+        function escapeCsvValue(value) {
+        
+            const escaped = value.replace(/\"/g, '\"\"');
+        
+            return `\"${escaped}\"`;
         }
 
         document.addEventListener('click', removeContextMenu);
